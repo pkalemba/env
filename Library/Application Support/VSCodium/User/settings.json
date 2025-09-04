@@ -1,0 +1,14 @@
+{
+    "extensions.experimental.affinity": {
+        "asvetliakov.vscode-neovim": 1
+    },
+    "vs-kubernetes": {
+        "vs-kubernetes.crd-code-completion": "disabled"
+    },
+    "workbench.settings.applyToAllProfiles": [
+
+    ],
+    "editor.fontFamily": "Inconsolata Nerd Font",
+    "editor.fontSize": 14,
+    "workbench.colorTheme": "Gruvbox Dark Medium",
+}

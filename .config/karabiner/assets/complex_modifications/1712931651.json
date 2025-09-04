@@ -1,0 +1,1 @@
+{"title":"Remap 3-button keyboard","rules":[{"description":"Remap f1 on 3-button keyboard","manipulators":[{"type":"basic","from":{"key_code":"f1"},"conditions":[{"type":"device_if","identifiers":[{"vendor_id":"4489","product_id":"34960","is_keyboard":true}]}],"to":[{"repeat":false,"pointing_button":"button1"}]}]}]}

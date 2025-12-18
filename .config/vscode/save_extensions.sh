@@ -1,1 +1,1 @@
-codium --list-extensions > .config/code_extensions.txt
+codium --list-extensions > $HOME/.config/code_extensions.txt

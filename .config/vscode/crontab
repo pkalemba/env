@@ -1,1 +1,1 @@
-0 */12 * * * $HOME/.config/vscode/save_extensions.sh
+13 11 * * 1-5 $HOME/.config/vscode/save_extensions.sh

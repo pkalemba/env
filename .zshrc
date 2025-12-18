@@ -1,12 +1,14 @@
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
-
-if [ $TERM_PROGRAM = 'vscode' ]; then
-  export ZSH_TMUX_AUTOCONNECT=false
+if [[ -v $TERM_PROGRAM ]]; then
+    if [ $TERM_PROGRAM = 'vscode' ]; then
+        export ZSH_TMUX_AUTOCONNECT=false
+    fi
 fi
 
 eval "$(/opt/homebrew/bin/brew shellenv)"
+export PATH="$HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin:$PATH"
 zsh_plugins=${ZDOTDIR:-~}/.zsh_plugins
 
 # Ensure the .zsh_plugins.txt file exists so you can add plugins.
@@ -30,15 +32,11 @@ source ${zsh_plugins}.zsh
 # Load the oh-my-zsh's library.
 export MUSIC_APP="Music"
 
+export NVM_DIR="$HOME/.nvm"
+  [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
 export ZSH_TMUX_AUTOSTART=true
 unset GREP_OPTIONS && GREP_OPTIONS="--color=auto"
-alias vim=nvim
-alias nano=nvim
-alias k=kubectl
-alias terraform=tofu
-alias fuu='sudo `fc -n -l -1`'
-alias cp="rsync -ah --progress"
-function cd {
+function d {
     builtin cd "$@" && ls -F
     }
 function extract()      # Handy Extract Program
@@ -68,6 +66,7 @@ function authme() {
 }
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 source ~/.zsh_aliases
+
 [ -f `which bat` ] && alias cat=bat
 [ -f `which eza` ] && alias ls=eza
 
@@ -75,3 +74,5 @@ eval "$(atuin init zsh)"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"

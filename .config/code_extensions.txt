@@ -1,9 +1,0 @@
-helm-ls.helm-ls
-ms-kubernetes-tools.vscode-kubernetes-tools
-ms-python.debugpy
-ms-python.python
-opentofu.vscode-opentofu
-redhat.vscode-yaml
-vscodevim.vim
-zokugun.cron-tasks
-zokugun.sync-settings

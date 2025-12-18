@@ -11,4 +11,34 @@
     "editor.fontFamily": "Inconsolata Nerd Font",
     "editor.fontSize": 14,
     "workbench.colorTheme": "Gruvbox Dark Medium",
+    "workbench.iconTheme": "vscode-great-icons",
+    "cSpell.customDictionaries": {
+        "custom-dictionary-user": {
+            "name": "custom-dictionary-user",
+            "path": "~/.cspell/custom-dictionary-user.txt",
+            "addWords": true,
+            "scope": "user"
+        }
+    },
+    "editor.indentSize": "tabSize",
+    "terminal.integrated.scrollback": 10000000,
+    "terminal.integrated.smoothScrolling": true,
+    "redhat.telemetry.enabled": false,
+    "terminal.integrated.env.osx": {
+        "TERM_PROGRAM": "vscode"
+    },
+    "yaml.schemas": {
+        "file:///Users/pkalemba/.vscode-oss/extensions/continue.continue-1.2.10-darwin-arm64/config-yaml-schema.json": [
+            ".continue/**/*.yaml"
+        ]
+    },
+    "[dockercompose]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.autoIndent": "advanced",
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "[github-actions-workflow]": {
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
 }

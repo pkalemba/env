@@ -7,15 +7,21 @@ if [[ -v $TERM_PROGRAM ]]; then
     fi
 fi
 
+{% if yadm.os == "Darwin" %}
 eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin:$PATH"
+{% endif %}
 zsh_plugins=${ZDOTDIR:-~}/.zsh_plugins
 
 # Ensure the .zsh_plugins.txt file exists so you can add plugins.
 [[ -f ${zsh_plugins}.txt ]] || touch ${zsh_plugins}.txt
 
 # Lazy-load antidote from its functions directory.
+{% if yadm.os == "Darwin" %}
 fpath=( $HOMEBREW_PREFIX/opt/antidote/share/antidote/functions $fpath)
+{% else %}
+fpath=( ${ZDOTDIR:-~}/.antidote/functions $fpath)
+{% endif %}
 autoload -Uz antidote
 
 # Generate a new static file whenever .zsh_plugins.txt is updated.
@@ -33,7 +39,11 @@ source ${zsh_plugins}.zsh
 export MUSIC_APP="Music"
 
 export NVM_DIR="$HOME/.nvm"
-  [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
+{% if yadm.os == "Darwin" %}
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
+{% else %}
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+{% endif %}
 export ZSH_TMUX_AUTOSTART=true
 unset GREP_OPTIONS && GREP_OPTIONS="--color=auto"
 function d {
@@ -74,5 +84,6 @@ eval "$(atuin init zsh)"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+{% if yadm.os == "Darwin" %}
 export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
-export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+{% endif %}

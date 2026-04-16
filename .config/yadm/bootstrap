@@ -21,7 +21,136 @@ if [ "$system_type" = "Darwin" ]; then
     echo "Updating homebrew bundle"
     /opt/homebrew/bin/brew bundle --global
   fi
-fi
-crontab $HOME/.config/vscode/crontab
-cat .config/code_extensions.txt|xargs -n1 -I{} codium --install-extension {} --force
 
+elif [ "$system_type" = "Linux" ]; then
+
+  # Detect package manager
+  if command -v apt-get >/dev/null 2>&1; then
+    PKG="apt"
+  elif command -v dnf >/dev/null 2>&1; then
+    PKG="dnf"
+  elif command -v pacman >/dev/null 2>&1; then
+    PKG="pacman"
+  else
+    echo "No supported package manager found (apt/dnf/pacman)"
+    exit 1
+  fi
+
+  echo "Installing packages via $PKG"
+  if [ "$PKG" = "apt" ]; then
+    sudo apt-get update
+    sudo apt-get install -y \
+      autoconf bash bat bison build-essential curl diffutils ed emacs \
+      findutils flex fzf gawk git gnupg2 gpg grep gzip htop jq less \
+      m4 make nano neovim openssh-client perl postgresql procps \
+      python3 python3-pip rsync screen tmux unzip vim watch wdiff wget zsh
+  elif [ "$PKG" = "dnf" ]; then
+    sudo dnf install -y \
+      autoconf bash bat bison curl diffutils ed emacs findutils flex \
+      fzf gawk git gnupg2 grep gzip htop jq less m4 make nano neovim \
+      openssh perl postgresql procps-ng python3 python3-pip rsync \
+      screen tmux unzip vim watch wdiff wget zsh
+  elif [ "$PKG" = "pacman" ]; then
+    sudo pacman -Syu --noconfirm \
+      autoconf bash bat bison curl diffutils ed emacs findutils flex \
+      fzf gawk git gnupg grep gzip htop jq less m4 make nano neovim \
+      openssh perl postgresql procps-ng python python-pip rsync \
+      screen tmux unzip vim watch wdiff wget zsh
+  fi
+
+  # antidote (zsh plugin manager)
+  if [ ! -d "$HOME/.antidote" ]; then
+    echo "Installing antidote"
+    git clone --depth=1 https://github.com/mattmc3/antidote.git "$HOME/.antidote"
+  fi
+
+  # NVM
+  if [ ! -d "$HOME/.nvm" ]; then
+    echo "Installing NVM"
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+  fi
+
+  # atuin
+  if ! command -v atuin >/dev/null 2>&1; then
+    echo "Installing atuin"
+    curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
+  fi
+
+  # eza
+  if ! command -v eza >/dev/null 2>&1; then
+    echo "Installing eza"
+    ARCH=$(uname -m)
+    EZA_URL="https://github.com/eza-community/eza/releases/latest/download/eza_${ARCH}-unknown-linux-gnu.tar.gz"
+    curl -Lo /tmp/eza.tar.gz "$EZA_URL"
+    tar xf /tmp/eza.tar.gz -C /tmp eza
+    sudo install /tmp/eza /usr/local/bin/eza
+    rm /tmp/eza /tmp/eza.tar.gz
+  fi
+
+  # lazygit
+  if ! command -v lazygit >/dev/null 2>&1; then
+    echo "Installing lazygit"
+    LAZYGIT_VERSION=$(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | grep -Po '"tag_name": "v\K[^"]*')
+    ARCH=$(uname -m)
+    curl -Lo /tmp/lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_${ARCH}.tar.gz"
+    tar xf /tmp/lazygit.tar.gz -C /tmp lazygit
+    sudo install /tmp/lazygit /usr/local/bin/lazygit
+    rm /tmp/lazygit /tmp/lazygit.tar.gz
+  fi
+
+  # kubectl
+  if ! command -v kubectl >/dev/null 2>&1; then
+    echo "Installing kubectl"
+    KUBECTL_VERSION=$(curl -Ls https://dl.k8s.io/release/stable.txt)
+    ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+    curl -Lo /tmp/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl"
+    sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+    rm /tmp/kubectl
+  fi
+
+  # helm
+  if ! command -v helm >/dev/null 2>&1; then
+    echo "Installing helm"
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  fi
+
+  # k9s
+  if ! command -v k9s >/dev/null 2>&1; then
+    echo "Installing k9s"
+    K9S_VERSION=$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | grep -Po '"tag_name": "v\K[^"]*')
+    ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+    curl -Lo /tmp/k9s.tar.gz "https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_${ARCH}.tar.gz"
+    tar xf /tmp/k9s.tar.gz -C /tmp k9s
+    sudo install /tmp/k9s /usr/local/bin/k9s
+    rm /tmp/k9s /tmp/k9s.tar.gz
+  fi
+
+  # yq
+  if ! command -v yq >/dev/null 2>&1; then
+    echo "Installing yq"
+    ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+    sudo curl -Lo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${ARCH}"
+    sudo chmod +x /usr/local/bin/yq
+  fi
+
+  # uv (Python package manager)
+  if ! command -v uv >/dev/null 2>&1; then
+    echo "Installing uv"
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+  fi
+
+fi
+
+# VS Code / Codium extensions
+if command -v codium >/dev/null 2>&1 && [ -f "$HOME/.config/code_extensions.txt" ]; then
+  echo "Installing VS Code extensions"
+  cat "$HOME/.config/code_extensions.txt" | xargs -n1 -I{} codium --install-extension {} --force
+elif command -v code >/dev/null 2>&1 && [ -f "$HOME/.config/code_extensions.txt" ]; then
+  echo "Installing VS Code extensions"
+  cat "$HOME/.config/code_extensions.txt" | xargs -n1 -I{} code --install-extension {} --force
+fi
+
+# Crontab
+if [ -f "$HOME/.config/vscode/crontab" ]; then
+  crontab "$HOME/.config/vscode/crontab"
+fi

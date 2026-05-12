@@ -141,6 +141,19 @@ elif [ "$system_type" = "Linux" ]; then
 
 fi
 
+# macOS system settings
+if [ "$system_type" = "Darwin" ]; then
+  echo "Configuring macOS settings"
+
+  # Wallpaper
+  osascript -e 'tell application "System Events" to tell current desktop to set picture to (POSIX file (POSIX path of (path to pictures folder)) & "wallpaper.jpg" as text)'
+
+  # Dock
+  defaults write com.apple.dock autohide -bool true
+  defaults write com.apple.dock orientation -string left
+  killall Dock
+fi
+
 # VS Code / Codium extensions
 if command -v codium >/dev/null 2>&1 && [ -f "$HOME/.config/code_extensions.txt" ]; then
   echo "Installing VS Code extensions"

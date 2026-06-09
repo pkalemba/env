@@ -1,11 +1,7 @@
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
-if [[ -v $TERM_PROGRAM ]]; then
-    if [ $TERM_PROGRAM = 'vscode' ]; then
-        export ZSH_TMUX_AUTOCONNECT=false
-    fi
-fi
+
 
 {% if yadm.os == "Darwin" %}
 eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -30,13 +26,9 @@ if [[ ! ${zsh_plugins}.zsh -nt ${zsh_plugins}.txt ]]; then
 fi
 
 
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
+
 # Source your static plugins file.
 source ${zsh_plugins}.zsh
-# Load the oh-my-zsh's library.
-export MUSIC_APP="Music"
 
 export NVM_DIR="$HOME/.nvm"
 {% if yadm.os == "Darwin" %}
@@ -44,7 +36,6 @@ export NVM_DIR="$HOME/.nvm"
 {% else %}
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 {% endif %}
-export ZSH_TMUX_AUTOSTART=true
 unset GREP_OPTIONS && GREP_OPTIONS="--color=auto"
 function d {
     builtin cd "$@" && ls -F
@@ -77,13 +68,14 @@ function authme() {
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 source ~/.zsh_aliases
 
+autoload -U compinit; compinit
+
 [ -f `which bat` ] && alias cat=bat
 [ -f `which eza` ] && alias ls=eza
 
 eval "$(atuin init zsh)"
 
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 {% if yadm.os == "Darwin" %}
 export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 {% endif %}
+eval "$(starship init zsh)"

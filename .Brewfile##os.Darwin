@@ -1,4 +1,5 @@
 brew "antidote"
+brew "starship"
 brew "argocd"
 brew "atuin"
 brew "autoconf"

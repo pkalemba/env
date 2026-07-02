@@ -1,0 +1,36 @@
+#!/bin/sh
+# Modifier remappings previously handled by Karabiner-Elements, now via hidutil.
+# hidutil mappings reset on reboot and when a keyboard reconnects; the
+# pl.p10a.hidutil-remap LaunchAgent re-runs this script at login and whenever
+# one of the USB keyboards below is plugged in.
+#
+# HID usage values are 0x700000000 + keyboard-page usage:
+#   left_option  0x7000000E2   left_command  0x7000000E3
+#   right_option 0x7000000E6   right_command 0x7000000E7
+#
+# Not portable from the old Karabiner config (hidutil can only remap key to
+# key, per device):
+#   - ignoring the 1452:834 Apple keyboard entirely
+#   - print_screen -> cmd+shift+4 (set in System Settings > Keyboard >
+#     Keyboard Shortcuts > Screenshots instead)
+#   - f13/f14 -> open Safari (use a launcher hotkey, e.g. Raycast)
+#   - f4/f5/f6 -> keyboard illumination
+
+[ "$(uname -s)" = "Darwin" ] || exit 0
+
+# Apple keyboard (1452:591): right_command -> right_option
+hidutil property --matching '{"VendorID":1452,"ProductID":591}' --set '{"UserKeyMapping":[
+  {"HIDKeyboardModifierMappingSrc":0x7000000E7,"HIDKeyboardModifierMappingDst":0x7000000E6}
+]}' >/dev/null
+
+# 8BitDo keyboard (11720:20992): swap left_command <-> left_option
+hidutil property --matching '{"VendorID":11720,"ProductID":20992}' --set '{"UserKeyMapping":[
+  {"HIDKeyboardModifierMappingSrc":0x7000000E3,"HIDKeyboardModifierMappingDst":0x7000000E2},
+  {"HIDKeyboardModifierMappingSrc":0x7000000E2,"HIDKeyboardModifierMappingDst":0x7000000E3}
+]}' >/dev/null
+
+# Dell keyboard (16700:34053): swap left_command <-> left_option
+hidutil property --matching '{"VendorID":16700,"ProductID":34053}' --set '{"UserKeyMapping":[
+  {"HIDKeyboardModifierMappingSrc":0x7000000E3,"HIDKeyboardModifierMappingDst":0x7000000E2},
+  {"HIDKeyboardModifierMappingSrc":0x7000000E2,"HIDKeyboardModifierMappingDst":0x7000000E3}
+]}' >/dev/null

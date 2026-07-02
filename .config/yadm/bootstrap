@@ -152,6 +152,14 @@ if [ "$system_type" = "Darwin" ]; then
   defaults write com.apple.dock autohide -bool true
   defaults write com.apple.dock orientation -string left
   killall Dock
+
+  # Keyboard remapping via hidutil (replaces Karabiner-Elements)
+  if [ -f "$HOME/Library/LaunchAgents/pl.p10a.hidutil-remap.plist" ]; then
+    echo "Loading hidutil remap LaunchAgent"
+    launchctl bootout "gui/$(id -u)/pl.p10a.hidutil-remap" 2>/dev/null
+    launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/pl.p10a.hidutil-remap.plist"
+    "$HOME/.local/bin/hidutil-remap"
+  fi
 fi
 
 # VS Code / Codium extensions

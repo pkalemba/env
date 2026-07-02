@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>pl.p10a.hidutil-remap</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>"$HOME/.local/bin/hidutil-remap"</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>LaunchEvents</key>
+    <dict>
+        <key>com.apple.iokit.matching</key>
+        <dict>
+            <key>keyboard-apple-1452-591</key>
+            <dict>
+                <key>IOProviderClass</key>
+                <string>IOUSBDevice</string>
+                <key>idVendor</key>
+                <integer>1452</integer>
+                <key>idProduct</key>
+                <integer>591</integer>
+                <key>IOMatchLaunchStream</key>
+                <true/>
+            </dict>
+            <key>keyboard-8bitdo-11720-20992</key>
+            <dict>
+                <key>IOProviderClass</key>
+                <string>IOUSBDevice</string>
+                <key>idVendor</key>
+                <integer>11720</integer>
+                <key>idProduct</key>
+                <integer>20992</integer>
+                <key>IOMatchLaunchStream</key>
+                <true/>
+            </dict>
+            <key>keyboard-dell-16700-34053</key>
+            <dict>
+                <key>IOProviderClass</key>
+                <string>IOUSBDevice</string>
+                <key>idVendor</key>
+                <integer>16700</integer>
+                <key>idProduct</key>
+                <integer>34053</integer>
+                <key>IOMatchLaunchStream</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+</dict>
+</plist>

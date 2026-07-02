@@ -27,7 +27,7 @@ yadm clone <repo-url>
 yadm bootstrap
 ```
 
-Bootstrap installs all packages (Homebrew + bundle on macOS, apt/dnf/pacman on Linux), shell plugins, CLI tools, VS Code extensions, crontab, and macOS system settings (wallpaper, Dock).
+Bootstrap installs all packages (Homebrew + bundle on macOS, apt/dnf/pacman on Linux), shell plugins, CLI tools, VS Code extensions, crontab, and macOS system settings (wallpaper, Dock, keyboard remapping via `hidutil` — see `.local/bin/hidutil-remap`).
 
 ## Daily use
 

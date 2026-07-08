@@ -182,7 +182,7 @@ disabled = false
 
 [kubernetes]
 style = "bg:color_aqua"
-format = '[<U+E0B6>](fg:color_aqua)[[$context ](fg:color_fg0 bg:color_aqua)]($style)[<U+E0B0>](fg:color_orange bg:color_aqua inverted)[ $namespace ](fg:color_fg0 bg:color_orange)[<U+E0B4> ](fg:color_orange)'
+format = '[](fg:color_aqua)[[$context ](fg:color_fg0 bg:color_aqua)]($style)[](fg:color_orange bg:color_aqua inverted)[ $namespace ](fg:color_fg0 bg:color_orange)[ ](fg:color_orange)'       
 disabled = false
 
 [character]

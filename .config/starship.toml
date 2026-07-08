@@ -30,6 +30,8 @@ $time\
 [ ](fg:color_bg1)\
 $line_break$character"""
 
+right_format = """$kubernetes"""
+
 palette = 'gruvbox_dark'
 
 [palettes.gruvbox_dark]
@@ -179,7 +181,8 @@ disabled = false
 
 
 [kubernetes]
-format = 'on [⛵ ($user on )($cluster in )$context \($namespace\)](dimmed green) '
+style = "bg:color_aqua"
+format = '[<U+E0B6>](fg:color_aqua)[[$context ](fg:color_fg0 bg:color_aqua)]($style)[<U+E0B0>](fg:color_orange bg:color_aqua inverted)[ $namespace ](fg:color_fg0 bg:color_orange)[<U+E0B4> ](fg:color_orange)'
 disabled = false
 
 [character]

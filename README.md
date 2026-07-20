@@ -52,6 +52,37 @@ yadm decrypt               # on a new machine
 - `file##os.Darwin` — macOS only
 - `file##template` — Jinja2 template; use `{% if yadm.os == "Darwin" %}` for OS branching
 
+## tmux / TUI rendering on macOS
+
+Fixes for garbled TUI redraws (vim, Claude Code) inside tmux:
+
+- `.zshenv` sets the locale per OS: `en_US.UTF-8` (via `LC_ALL`) on macOS —
+  `C.UTF-8` is not a valid locale in macOS libc and silently falls back to `C`,
+  breaking wcwidth — and `C.UTF-8` on Linux. Trade-offs: `LC_ALL=en_US.UTF-8`
+  changes collation (sort order), and macOS ssh forwards `LANG LC_*` via
+  `SendEnv`, so remote hosts must have `en_US.UTF-8` generated.
+- Bootstrap compiles a modern `tmux-256color` terminfo (with `Smulx`/`Ss`/`Se`)
+  from Homebrew ncurses into `~/.terminfo`, shadowing the ancient system entry.
+
+Manual steps:
+
+1. Disable "Set locale environment variables automatically" in
+   iTerm2 (Profiles → Terminal) or Terminal.app (Settings → Profiles →
+   Advanced) — the emulator otherwise injects an invalid `LC_CTYPE=UTF-8`.
+2. Run `tmux kill-server` and start a fresh session — the running tmux server
+   keeps the locale and terminfo it saw at first start.
+
+Verify in the fresh session:
+
+```sh
+locale                                  # every variable en_US.UTF-8, no warnings
+echo "zażółć ═╬═ ✔ 🚀"                  # renders correctly
+infocmp -x tmux-256color | grep Smulx   # match → new terminfo active
+```
+
+vim should show clean box-drawing borders and undercurl; Claude Code should
+redraw cleanly.
+
 ## Submodules
 
 ```sh

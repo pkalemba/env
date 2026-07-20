@@ -22,6 +22,20 @@ if [ "$system_type" = "Darwin" ]; then
     /opt/homebrew/bin/brew bundle --global
   fi
 
+  # The tmux-256color terminfo shipped in /usr/share/terminfo is ancient
+  # (ncurses 5.7 era: kbs=^H, no Smulx/Ss/Se), which degrades TUI apps in
+  # tmux (no undercurl or cursor shapes in vim, garbled redraws). Compile a
+  # modern entry from Homebrew ncurses into ~/.terminfo, which takes
+  # precedence over the system database. Idempotent: skipped once the
+  # active entry already has Smulx.
+  if ! infocmp -x tmux-256color 2>/dev/null | grep -q Smulx; then
+    echo "Installing modern tmux-256color terminfo"
+    /opt/homebrew/bin/brew list ncurses >/dev/null 2>&1 || /opt/homebrew/bin/brew install ncurses
+    "$(/opt/homebrew/bin/brew --prefix ncurses)/bin/infocmp" -x tmux-256color > /tmp/tmux-256color.ti
+    tic -x /tmp/tmux-256color.ti   # compiles into ~/.terminfo
+    rm -f /tmp/tmux-256color.ti
+  fi
+
 elif [ "$system_type" = "Linux" ]; then
 
   # Detect package manager

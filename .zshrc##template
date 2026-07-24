@@ -7,6 +7,17 @@
 eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin:$PATH"
 {% endif %}
+
+# Auto-start tmux: attach to the "main" session if one is already active,
+# otherwise create it (new-session -A). Runs before the plugin machinery so the
+# outer shell stays cheap — the inner shell inside tmux re-sources this file and
+# skips this block because $TMUX is set (no nesting). Guarded to interactive,
+# non-dumb terminals only, so scripts/scp/editors are unaffected.
+if command -v tmux >/dev/null 2>&1 \
+   && [[ -o interactive && -z "$TMUX" && "$TERM" != "dumb" ]]; then
+  exec tmux new-session -A -s main
+fi
+
 zsh_plugins=${ZDOTDIR:-~}/.zsh_plugins
 
 # Ensure the .zsh_plugins.txt file exists so you can add plugins.

@@ -1,0 +1,44 @@
+disabled: []
+enabled:
+  - id: 1nVitr0.blocksort
+    uuid: 0ff1aefc-e9fe-422b-97c3-bac057822cf3
+  - id: Anthropic.claude-code
+    uuid: 3c13ae49-babe-45fe-8c48-5e45077a62bf
+  - id: claude-commit-generator.claude-commit-generator
+    uuid: 2e4faf87-e344-4fc5-bc4c-ccc7c96da18d
+  - id: esbenp.prettier-vscode
+    uuid: 96fa4707-6983-4489-b7c5-d5ffdfdcce90
+  - id: golang.go
+    uuid: d6f6cfea-4b6f-41f4-b571-6ad2ab7918da
+  - id: GrowthJack.claude-code-usage
+    uuid: f54607e5-708b-40c1-96f9-1d766bb659a9
+  - id: helm-ls.helm-ls
+    uuid: 8a9661f4-b1d7-4229-a73e-22082860e116
+  - id: jdinhlife.gruvbox
+    uuid: c6d564c4-ca8c-45ba-abf6-c85f2d1468d8
+  - id: JinxCappa.sopsie
+    uuid: 48d8c324-0e25-47da-95c5-9dd65599afd0
+  - id: ms-azuretools.vscode-containers
+    uuid: 2cd1d691-3d69-4d2d-ae39-fda4bc4cfd3d
+  - id: ms-azuretools.vscode-docker
+    uuid: 0479fc1c-3d67-49f9-b087-fb9069afe48f
+  - id: ms-kubernetes-tools.vscode-kubernetes-tools
+    uuid: 4837e4f3-1b01-4732-b1a6-daa57ef64cab
+  - id: ms-python.debugpy
+    uuid: 4bd5d2c9-9d65-401a-b0b2-7498d9f17615
+  - id: ms-python.python
+    uuid: f1f59ae4-9318-4f3c-a9b5-81b2eaa5f8a5
+  - id: ms-python.vscode-python-envs
+    uuid: b41d8e8a-b6d4-4202-8f07-7189bdda81be
+  - id: navernoedenis.gruvbox-material-icons
+    uuid: bfcda8d9-f8da-40e4-854f-250c363fcb3d
+  - id: opentofu.vscode-opentofu
+    uuid: f52f98b8-9404-4d1e-b4da-73d60dc6838b
+  - id: redhat.vscode-yaml
+    uuid: 2061917f-f76a-458a-8da9-f162de22b97e
+  - id: tekumara.typos-vscode
+    uuid: cacf9bc1-be24-4469-a257-69f3cbe32e04
+  - id: vscodevim.vim
+    uuid: d96e79c6-8b25-4be3-8545-0e0ecefcae03
+  - id: zokugun.cron-tasks
+    uuid: b7bbbbd5-7a39-4312-87aa-ef6a41de67fb

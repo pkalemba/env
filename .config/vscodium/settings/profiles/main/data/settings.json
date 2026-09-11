@@ -1,0 +1,29 @@
+{
+    "workbench.colorTheme": "Gruvbox Dark Soft",
+    "claudeCode.preferredLocation": "panel",
+    "editor.fontFamily": "Inconsolata Nerd Font",
+    "terminal.integrated.fontFamily": "Inconsolata Nerd Font",
+    "terminal.integrated.env.linux": {
+        "NO_TMUX": "1"
+    },
+    "terminal.integrated.env.osx": {
+        "NO_TMUX": "1" 
+    },
+    "vs-kubernetes": {
+        "vs-kubernetes.crd-code-completion": "disabled"
+    },
+    "explorer.confirmDragAndDrop": false,
+    "explorer.confirmPasteNative": false,
+    "git.ignoreRebaseWarning": true,
+    "chat.mcp.discovery.enabled": {
+        "claude-desktop": true
+    },
+    "git.confirmSync": false,
+    "claudeCode.initialPermissionMode": "plan",
+    "editor.renderWhitespace": "all",
+    "diffEditor.ignoreTrimWhitespace": false,
+    "workbench.iconTheme": "gruvbox-material-icons",
+    "redhat.telemetry.enabled": false,
+    "claudeCommitGen.model": "haiku",
+    "claudeCommitGen.prompt": "Generate a Conventional Commits style commit message for the staged diff below.  BRANCH: {{BRANCH_NAME}}  Ticket reference: - Extract the ticket ID from BRANCH only — never from the diff, filenames or code. - Take the FIRST match of, in order:   1. Jira/Linear style: [A-Z][A-Z0-9]{1,9}-\\d+   -> use verbatim (e.g. PROJ-1234)   2. Bare number as a path/prefix segment: (?:^|/|-)(\\d{1,6})(?:-|$) -> emit as #1234 - Ignore main, master, develop, release/*, and any branch with no match. - If no ID is found, omit the reference line entirely. Never invent, guess or   infer an ID.  Format: <type>(<scope>): <subject>  <optional body>  Refs: <TICKET>  Rules: - type: feat|fix|refactor|perf|docs|test|build|ci|chore - scope: affected component/module from the diff, or omit if unclear.   Do NOT put the ticket ID in the scope. - subject: imperative mood, lowercase, no trailing period, whole line < 72 chars. - body: only if the \"why\" is not obvious from the subject; wrap at 72 chars,   use \"- \" bullets for multiple changes. - breaking change: add \"!\" after type/scope AND a \"BREAKING CHANGE: <desc>\" footer. - Output ONLY the commit message. No code fences, no preamble, no explanation."
+}

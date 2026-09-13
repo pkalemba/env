@@ -1,92 +1,130 @@
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-
+# ~/.zshrc — interactive shells only.
+#
+# The ordering in this file is a contract, not house style:
+#
+#   1. zsh-defer must be defined before anything is queued onto it.
+#   2. compinit must be queued BEFORE the main plugin bundle, because the
+#      defer queue is FIFO and fzf-tab calls compdef when it loads.
+#   3. zsh-syntax-highlighting must be last, as it wraps existing widgets.
+#
+# Both plugin lists (.zsh_plugins_pre.txt, .zsh_plugins.txt) carry matching
+# notes. Read them together before rearranging anything here.
 
 {% if yadm.os == "Darwin" %}
-eval "$(/opt/homebrew/bin/brew shellenv)"
-export PATH="$HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin:$PATH"
+# Homebrew is at /opt/homebrew on Apple Silicon and /usr/local on Intel.
+for _brew in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+  if [[ -x $_brew ]]; then
+    eval "$("$_brew" shellenv)"
+    break
+  fi
+done
+unset _brew
+
+[[ -d $HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin ]] \
+  && export PATH="$HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin:$PATH"
 {% endif %}
 
-# Auto-start tmux: attach to the "main" session if one is already active,
-# otherwise create it (new-session -A). Runs before the plugin machinery so the
-# outer shell stays cheap — the inner shell inside tmux re-sources this file and
-# skips this block because $TMUX is set (no nesting). Guarded to interactive,
-# non-dumb terminals only, so scripts/scp/editors are unaffected.
+# ---------------------------------------------------------------------------
+# tmux auto-start
+# ---------------------------------------------------------------------------
+# Attach to the "main" session if one is active, otherwise create it. This runs
+# before the plugin machinery so the outer shell stays cheap — the inner shell
+# inside tmux re-sources this file and skips the block because $TMUX is set.
+# NO_TMUX=1 opts out; the VSCodium integrated terminal sets it.
 if command -v tmux >/dev/null 2>&1 \
-   && [[ -o interactive && -z "$TMUX" && "$TERM" != "dumb" ]]; then
+   && [[ -o interactive && -z "$TMUX" && -z "$NO_TMUX" && "$TERM" != "dumb" ]]; then
   exec tmux new-session -A -s main
 fi
 
+# ---------------------------------------------------------------------------
+# Plugins and completion
+# ---------------------------------------------------------------------------
 zsh_plugins=${ZDOTDIR:-~}/.zsh_plugins
 
-# Ensure the .zsh_plugins.txt file exists so you can add plugins.
-[[ -f ${zsh_plugins}.txt ]] || touch ${zsh_plugins}.txt
+[[ -f ${zsh_plugins}.txt ]]     || touch ${zsh_plugins}.txt
+[[ -f ${zsh_plugins}_pre.txt ]] || touch ${zsh_plugins}_pre.txt
 
-# Lazy-load antidote from its functions directory.
 {% if yadm.os == "Darwin" %}
-fpath=( $HOMEBREW_PREFIX/opt/antidote/share/antidote/functions $fpath)
+fpath=( $HOMEBREW_PREFIX/opt/antidote/share/antidote/functions $fpath )
 {% else %}
-fpath=( ${ZDOTDIR:-~}/.antidote/functions $fpath)
+fpath=( ${ZDOTDIR:-~}/.antidote/functions $fpath )
 {% endif %}
 autoload -Uz antidote
 
-# Generate a new static file whenever .zsh_plugins.txt is updated.
-if [[ ! ${zsh_plugins}.zsh -nt ${zsh_plugins}.txt ]]; then
-  antidote bundle <${zsh_plugins}.txt >|${zsh_plugins}.zsh
-fi
+# Regenerate a static bundle whenever its source list changes.
+for _list in ${zsh_plugins}_pre ${zsh_plugins}; do
+  [[ ${_list}.zsh -nt ${_list}.txt ]] || antidote bundle <${_list}.txt >|${_list}.zsh
+done
+unset _list
 
+# (1) zsh-defer alone. Nothing is queued yet.
+source ${zsh_plugins}_pre.zsh
 
+# (2) compinit goes into the queue first. Full rebuild at most once a day;
+# otherwise -C reuses the dump and skips the fpath security audit.
+# The anonymous function scopes extended_glob (required by the (#q...) glob
+# qualifier below) and $dump, so nothing leaks into the interactive shell.
+zsh-defer -c '() {
+  emulate -L zsh -o extended_glob
+  autoload -Uz compinit
+  local dump=${ZDOTDIR:-$HOME}/.zcompdump
+  # Reuse the dump only when it exists AND is under a day old. Everything else
+  # -- including a missing dump on a fresh machine -- gets a full rebuild;
+  # -C skips the fpath security audit and must never run without a real dump.
+  if [[ -f $dump && -z ${dump}(#qN.mh+24) ]]; then
+    compinit -C -d $dump
+  else
+    compinit -d $dump
+  fi
+}'
 
-# Source your static plugins file.
+# (3) Everything else. zsh-completions extends $fpath now (before the deferred
+# compinit runs); fzf-tab and zsh-syntax-highlighting queue up behind compinit.
 source ${zsh_plugins}.zsh
 
+# ---------------------------------------------------------------------------
+# Aliases and functions
+# ---------------------------------------------------------------------------
+[[ -r ~/.config/zsh/functions.zsh ]] && source ~/.config/zsh/functions.zsh
+
+# ~/.zsh_aliases is stored encrypted (see .config/yadm/encrypt), so it does not
+# exist until `yadm decrypt` has run. Without this guard every fresh clone
+# errors on each shell start.
+[[ -r ~/.zsh_aliases ]] && source ~/.zsh_aliases
+
+# GREP_OPTIONS was removed from grep in 2.21 and warns on every invocation.
+alias grep='grep --color=auto'
+
+# Debian and Ubuntu ship bat as batcat.
+if (( $+commands[bat] )); then
+  alias cat='bat'
+elif (( $+commands[batcat] )); then
+  alias cat='batcat'
+fi
+(( $+commands[eza] )) && alias ls='eza'
+
+# ---------------------------------------------------------------------------
+# Tools
+# ---------------------------------------------------------------------------
 export NVM_DIR="$HOME/.nvm"
 {% if yadm.os == "Darwin" %}
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
+_nvm_sh="$HOMEBREW_PREFIX/opt/nvm/nvm.sh"
 {% else %}
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+_nvm_sh="$NVM_DIR/nvm.sh"
 {% endif %}
-unset GREP_OPTIONS && GREP_OPTIONS="--color=auto"
-function d {
-    builtin cd "$@" && ls -F
-    }
-function extract()      # Handy Extract Program
-{
-    if [ -f $1 ] ; then
-        case $1 in
-            *.tar.bz2)   tar xvjf "$1"    ;;
-            *.tar.gz)    tar xvzf "$1"    ;;
-            *.bz2)       bunzip2 "$1"     ;;
-            *.rar)       unrar x "$1"     ;;
-            *.gz)        gunzip "$1"      ;;
-            *.tar)       tar xvf "$1"     ;;
-            *.tbz2)      tar xvjf "$1"    ;;
-            *.tgz)       tar xvzf "$1"    ;;
-            *.zip)       unzip "$1"       ;;
-            *.Z)         uncompress "$1"  ;;
-            *.7z)        7z x "$1"        ;;
-            *)           echo "'$1' cannot be extracted via >extract<" ;;
-        esac
-    else
-        echo "'$1' is not a valid file!"
-    fi
-}
-function authme() {
-  ssh "$1" 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys' \
-    < ~/.ssh/id_rsa.pub
-}
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-source ~/.zsh_aliases
+# nvm is the single most expensive thing here, and zsh-defer makes a hand-rolled
+# lazy-load shim unnecessary.
+[[ -s $_nvm_sh ]] && zsh-defer source $_nvm_sh
+unset _nvm_sh
 
-autoload -U compinit; compinit
+[[ -r ~/.fzf.zsh ]] && zsh-defer source ~/.fzf.zsh
 
-[ -f `which bat` ] && alias cat=bat
-[ -f `which eza` ] && alias ls=eza
+# -c so the `atuin init` subprocess is deferred too, not just the eval.
+(( $+commands[atuin] )) && zsh-defer -c 'eval "$(atuin init zsh)"'
 
-eval "$(atuin init zsh)"
-
-{% if yadm.os == "Darwin" %}
-export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
-{% endif %}
-eval "$(starship init zsh)"
+# ---------------------------------------------------------------------------
+# Prompt
+# ---------------------------------------------------------------------------
+# Deliberately NOT deferred: starship defines the prompt, and deferring it
+# shows a flash of the default prompt on every start. Init cost is negligible.
+(( $+commands[starship] )) && eval "$(starship init zsh)"

@@ -1,191 +1,260 @@
 #!/bin/sh
+# yadm bootstrap — idempotent; safe to re-run.
 
-# Because Git submodule commands cannot operate without a work tree, they must
-# be run from within $HOME (assuming this is the root of your dotfiles)
+set -eu
+
+step=""
+trap 'test -z "$step" || echo "bootstrap: FAILED during: $step" >&2' EXIT
+say() { step="$1"; echo; echo "==> $1"; }
+
+# Git submodule commands need a work tree, so run from $HOME (the dotfiles root)
 cd "$HOME"
 
-echo "Init submodules"
+say "Initialising submodules"
 yadm submodule update --recursive --init
 
 system_type=$(uname -s)
 
+# Optional host class, set with: yadm config local.class work|home
+yadm_class=$(yadm config local.class 2>/dev/null || true)
+echo "host class: ${yadm_class:-<unset>}"
+
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
 if [ "$system_type" = "Darwin" ]; then
 
-  # install homebrew if it's missing
   if ! command -v brew >/dev/null 2>&1; then
-    echo "Installing homebrew"
+    say "Installing Homebrew"
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
 
+  # Apple Silicon uses /opt/homebrew, Intel /usr/local. Never hardcode either.
+  BREW=$(command -v brew || true)
+  for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    [ -n "$BREW" ] && break
+    [ -x "$candidate" ] && BREW=$candidate
+  done
+  if [ -z "$BREW" ]; then
+    echo "bootstrap: brew not found after install" >&2
+    exit 1
+  fi
+  eval "$("$BREW" shellenv)"
+
   if [ -f "$HOME/.Brewfile" ]; then
-    echo "Updating homebrew bundle"
-    /opt/homebrew/bin/brew bundle --global
+    say "Installing Homebrew bundle"
+    "$BREW" bundle --global
   fi
 
-  # The tmux-256color terminfo shipped in /usr/share/terminfo is ancient
-  # (ncurses 5.7 era: kbs=^H, no Smulx/Ss/Se), which degrades TUI apps in
-  # tmux (no undercurl or cursor shapes in vim, garbled redraws). Compile a
-  # modern entry from Homebrew ncurses into ~/.terminfo, which takes
-  # precedence over the system database. Idempotent: skipped once the
-  # active entry already has Smulx.
+  # The tmux-256color terminfo in /usr/share/terminfo is ancient (ncurses 5.7:
+  # kbs=^H, no Smulx/Ss/Se), which degrades TUI apps under tmux — no undercurl
+  # or cursor shapes in vim, garbled redraws. Compile a modern entry into
+  # ~/.terminfo, which takes precedence. Skipped once the active entry has Smulx.
   if ! infocmp -x tmux-256color 2>/dev/null | grep -q Smulx; then
-    echo "Installing modern tmux-256color terminfo"
-    /opt/homebrew/bin/brew list ncurses >/dev/null 2>&1 || /opt/homebrew/bin/brew install ncurses
-    "$(/opt/homebrew/bin/brew --prefix ncurses)/bin/infocmp" -x tmux-256color > /tmp/tmux-256color.ti
-    tic -x /tmp/tmux-256color.ti   # compiles into ~/.terminfo
-    rm -f /tmp/tmux-256color.ti
+    say "Installing modern tmux-256color terminfo"
+    "$BREW" list ncurses >/dev/null 2>&1 || "$BREW" install ncurses
+    ti=$(mktemp -t tmux-256color.XXXXXX)
+    "$("$BREW" --prefix ncurses)/bin/infocmp" -x tmux-256color > "$ti"
+    tic -x "$ti"          # compiles into ~/.terminfo
+    rm -f "$ti"
   fi
 
+# ---------------------------------------------------------------------------
+# Linux
+# ---------------------------------------------------------------------------
 elif [ "$system_type" = "Linux" ]; then
 
-  # Detect package manager
-  if command -v apt-get >/dev/null 2>&1; then
-    PKG="apt"
-  elif command -v dnf >/dev/null 2>&1; then
-    PKG="dnf"
-  elif command -v pacman >/dev/null 2>&1; then
-    PKG="pacman"
+  if command -v apt-get >/dev/null 2>&1;   then PKG=apt
+  elif command -v dnf >/dev/null 2>&1;     then PKG=dnf
+  elif command -v pacman >/dev/null 2>&1;  then PKG=pacman
   else
-    echo "No supported package manager found (apt/dnf/pacman)"
+    echo "No supported package manager found (apt/dnf/pacman)" >&2
     exit 1
   fi
 
-  echo "Installing packages via $PKG"
-  if [ "$PKG" = "apt" ]; then
-    sudo apt-get update
-    sudo apt-get install -y \
-      autoconf bash bat bison build-essential curl diffutils ed emacs \
-      findutils flex fzf gawk git gnupg2 gpg grep gzip htop jq less \
-      m4 make nano neovim openssh-client perl postgresql procps \
-      python3 python3-pip rsync screen tmux unzip vim watch wdiff wget zsh
-  elif [ "$PKG" = "dnf" ]; then
-    sudo dnf install -y \
-      autoconf bash bat bison curl diffutils ed emacs findutils flex \
-      fzf gawk git gnupg2 grep gzip htop jq less m4 make nano neovim \
-      openssh perl postgresql procps-ng python3 python3-pip rsync \
-      screen tmux unzip vim watch wdiff wget zsh
-  elif [ "$PKG" = "pacman" ]; then
-    sudo pacman -Syu --noconfirm \
-      autoconf bash bat bison curl diffutils ed emacs findutils flex \
-      fzf gawk git gnupg grep gzip htop jq less m4 make nano neovim \
-      openssh perl postgresql procps-ng python python-pip rsync \
-      screen tmux unzip vim watch wdiff wget zsh
-  fi
+  # Kept in step with .Brewfile##template: postgresql is work-class only there,
+  # so it is work-class only here too.
+  say "Installing packages via $PKG"
+  case $PKG in
+    apt)
+      sudo apt-get update
+      sudo apt-get install -y \
+        autoconf bash bat bison build-essential curl diffutils ed emacs \
+        findutils flex fontconfig fzf gawk git gnupg2 gpg grep gzip htop jq \
+        less m4 make nano neovim openssh-client perl procps python3 \
+        python3-pip rsync screen tmux unzip vim watch wdiff wget zsh
+      [ "$yadm_class" = "work" ] && sudo apt-get install -y postgresql
+      ;;
+    dnf)
+      sudo dnf install -y \
+        autoconf bash bat bison curl diffutils ed emacs findutils flex \
+        fontconfig fzf gawk git gnupg2 grep gzip htop jq less m4 make nano \
+        neovim openssh perl procps-ng python3 python3-pip rsync screen tmux \
+        unzip vim watch wdiff wget zsh
+      [ "$yadm_class" = "work" ] && sudo dnf install -y postgresql
+      ;;
+    pacman)
+      sudo pacman -Syu --noconfirm \
+        autoconf bash bat bison curl diffutils ed emacs findutils flex \
+        fontconfig fzf gawk git gnupg grep gzip htop jq less m4 make nano \
+        neovim openssh perl procps-ng python python-pip rsync screen tmux \
+        unzip vim watch wdiff wget zsh
+      [ "$yadm_class" = "work" ] && sudo pacman -S --noconfirm postgresql
+      ;;
+  esac
 
-  # antidote (zsh plugin manager)
+  arch_go() { uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'; }
+
   if [ ! -d "$HOME/.antidote" ]; then
-    echo "Installing antidote"
+    say "Installing antidote"
     git clone --depth=1 https://github.com/mattmc3/antidote.git "$HOME/.antidote"
   fi
 
-  # NVM
   if [ ! -d "$HOME/.nvm" ]; then
-    echo "Installing NVM"
+    say "Installing nvm"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
   fi
 
-  # atuin
   if ! command -v atuin >/dev/null 2>&1; then
-    echo "Installing atuin"
+    say "Installing atuin"
     curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
   fi
 
-  # eza
   if ! command -v eza >/dev/null 2>&1; then
-    echo "Installing eza"
-    ARCH=$(uname -m)
-    EZA_URL="https://github.com/eza-community/eza/releases/latest/download/eza_${ARCH}-unknown-linux-gnu.tar.gz"
-    curl -Lo /tmp/eza.tar.gz "$EZA_URL"
-    tar xf /tmp/eza.tar.gz -C /tmp eza
-    sudo install /tmp/eza /usr/local/bin/eza
-    rm /tmp/eza /tmp/eza.tar.gz
+    say "Installing eza"
+    # The tarball stores ./eza, so extract everything into a temp dir and pick
+    # the binary out rather than naming the member.
+    tmp=$(mktemp -d)
+    curl -Lo "$tmp/eza.tar.gz" \
+      "https://github.com/eza-community/eza/releases/latest/download/eza_$(uname -m)-unknown-linux-gnu.tar.gz"
+    tar xf "$tmp/eza.tar.gz" -C "$tmp"
+    sudo install "$(find "$tmp" -name eza -type f -print -quit)" /usr/local/bin/eza
+    rm -rf "$tmp"
   fi
 
-  # lazygit
   if ! command -v lazygit >/dev/null 2>&1; then
-    echo "Installing lazygit"
-    LAZYGIT_VERSION=$(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | grep -Po '"tag_name": "v\K[^"]*')
-    ARCH=$(uname -m)
-    curl -Lo /tmp/lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_${ARCH}.tar.gz"
-    tar xf /tmp/lazygit.tar.gz -C /tmp lazygit
-    sudo install /tmp/lazygit /usr/local/bin/lazygit
-    rm /tmp/lazygit /tmp/lazygit.tar.gz
+    say "Installing lazygit"
+    tmp=$(mktemp -d)
+    ver=$(curl -sL https://api.github.com/repos/jesseduffield/lazygit/releases/latest \
+          | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
+    curl -Lo "$tmp/lazygit.tar.gz" \
+      "https://github.com/jesseduffield/lazygit/releases/download/v${ver}/lazygit_${ver}_Linux_$(uname -m).tar.gz"
+    tar xf "$tmp/lazygit.tar.gz" -C "$tmp" lazygit
+    sudo install "$tmp/lazygit" /usr/local/bin/lazygit
+    rm -rf "$tmp"
   fi
 
-  # kubectl
   if ! command -v kubectl >/dev/null 2>&1; then
-    echo "Installing kubectl"
-    KUBECTL_VERSION=$(curl -Ls https://dl.k8s.io/release/stable.txt)
-    ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-    curl -Lo /tmp/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl"
-    sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
-    rm /tmp/kubectl
+    say "Installing kubectl"
+    tmp=$(mktemp -d)
+    ver=$(curl -Ls https://dl.k8s.io/release/stable.txt)
+    curl -Lo "$tmp/kubectl" "https://dl.k8s.io/release/${ver}/bin/linux/$(arch_go)/kubectl"
+    sudo install -m 0755 "$tmp/kubectl" /usr/local/bin/kubectl
+    rm -rf "$tmp"
   fi
 
-  # helm
   if ! command -v helm >/dev/null 2>&1; then
-    echo "Installing helm"
-    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    say "Installing helm"
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
   fi
 
-  # k9s
   if ! command -v k9s >/dev/null 2>&1; then
-    echo "Installing k9s"
-    K9S_VERSION=$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | grep -Po '"tag_name": "v\K[^"]*')
-    ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-    curl -Lo /tmp/k9s.tar.gz "https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_${ARCH}.tar.gz"
-    tar xf /tmp/k9s.tar.gz -C /tmp k9s
-    sudo install /tmp/k9s /usr/local/bin/k9s
-    rm /tmp/k9s /tmp/k9s.tar.gz
+    say "Installing k9s"
+    tmp=$(mktemp -d)
+    curl -Lo "$tmp/k9s.tar.gz" \
+      "https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_$(arch_go).tar.gz"
+    tar xf "$tmp/k9s.tar.gz" -C "$tmp" k9s
+    sudo install "$tmp/k9s" /usr/local/bin/k9s
+    rm -rf "$tmp"
   fi
 
-  # yq
   if ! command -v yq >/dev/null 2>&1; then
-    echo "Installing yq"
-    ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-    sudo curl -Lo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${ARCH}"
-    sudo chmod +x /usr/local/bin/yq
+    say "Installing yq"
+    tmp=$(mktemp -d)
+    curl -Lo "$tmp/yq" "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_$(arch_go)"
+    sudo install -m 0755 "$tmp/yq" /usr/local/bin/yq
+    rm -rf "$tmp"
   fi
 
-  # uv (Python package manager)
   if ! command -v uv >/dev/null 2>&1; then
-    echo "Installing uv"
+    say "Installing uv"
     curl -LsSf https://astral.sh/uv/install.sh | sh
   fi
 
+  # starship, tmux and VSCodium all reference Inconsolata Nerd Font. macOS gets
+  # it from a cask; without this Linux renders the prompt as tofu.
+  if ! fc-list 2>/dev/null | grep -qi "Inconsolata Nerd Font"; then
+    say "Installing Inconsolata Nerd Font"
+    tmp=$(mktemp -d)
+    curl -Lo "$tmp/font.tar.xz" \
+      https://github.com/ryanoasis/nerd-fonts/releases/latest/download/Inconsolata.tar.xz
+    mkdir -p "$HOME/.local/share/fonts"
+    tar xf "$tmp/font.tar.xz" -C "$HOME/.local/share/fonts"
+    fc-cache -f "$HOME/.local/share/fonts"
+    rm -rf "$tmp"
+  fi
 fi
 
+# ---------------------------------------------------------------------------
+# Login shell
+# ---------------------------------------------------------------------------
+zsh_path=$(command -v zsh || true)
+if [ -n "$zsh_path" ] && [ "${SHELL:-}" != "$zsh_path" ]; then
+  say "Setting zsh as the login shell"
+  grep -qxF "$zsh_path" /etc/shells 2>/dev/null || echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
+  chsh -s "$zsh_path" || echo "chsh failed; run it by hand: chsh -s $zsh_path" >&2
+fi
+
+# ---------------------------------------------------------------------------
 # macOS system settings
+# ---------------------------------------------------------------------------
 if [ "$system_type" = "Darwin" ]; then
-  echo "Configuring macOS settings"
+  say "Applying macOS settings"
 
-  # Wallpaper
-  osascript -e 'tell application "System Events" to tell current desktop to set picture to (POSIX file (POSIX path of (path to pictures folder)) & "wallpaper.jpg" as text)'
+  wallpaper="$HOME/Pictures/wallpaper.jpg"
+  if [ -f "$wallpaper" ]; then
+    osascript -e "tell application \"System Events\" to tell current desktop to set picture to POSIX file \"$wallpaper\""
+  else
+    echo "no $wallpaper, skipping wallpaper"
+  fi
 
-  # Dock
   defaults write com.apple.dock autohide -bool true
   defaults write com.apple.dock orientation -string left
-  killall Dock
+  killall Dock || true
 
   # Keyboard remapping via hidutil (replaces Karabiner-Elements)
-  if [ -f "$HOME/Library/LaunchAgents/pl.p10a.hidutil-remap.plist" ]; then
-    echo "Loading hidutil remap LaunchAgent"
-    launchctl bootout "gui/$(id -u)/pl.p10a.hidutil-remap" 2>/dev/null
-    launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/pl.p10a.hidutil-remap.plist"
+  plist="$HOME/Library/LaunchAgents/pl.p10a.hidutil-remap.plist"
+  if [ -f "$plist" ]; then
+    say "Loading hidutil remap LaunchAgent"
+    launchctl bootout "gui/$(id -u)/pl.p10a.hidutil-remap" 2>/dev/null || true
+    launchctl bootstrap "gui/$(id -u)" "$plist"
     "$HOME/.local/bin/hidutil-remap"
   fi
 fi
 
-# VS Code / Codium extensions
-if command -v codium >/dev/null 2>&1 && [ -f "$HOME/.config/code_extensions.txt" ]; then
-  echo "Installing VS Code extensions"
-  cat "$HOME/.config/code_extensions.txt" | xargs -n1 -I{} codium --install-extension {} --force
-elif command -v code >/dev/null 2>&1 && [ -f "$HOME/.config/code_extensions.txt" ]; then
-  echo "Installing VS Code extensions"
-  cat "$HOME/.config/code_extensions.txt" | xargs -n1 -I{} code --install-extension {} --force
+# ---------------------------------------------------------------------------
+# Editor extensions
+# ---------------------------------------------------------------------------
+# Single source of truth: the Sync Settings profile. The old
+# .config/code_extensions.txt was a second, empty list, so this step silently
+# installed nothing.
+extensions_yml="$HOME/.config/vscodium/settings/profiles/main/data/extensions.yml"
+editor=$(command -v codium || command -v code || true)
+
+if [ -n "$editor" ] && [ -f "$extensions_yml" ]; then
+  say "Installing editor extensions from $(basename "$extensions_yml")"
+  # Parsed with awk rather than yq on purpose: "yq" is two different programs
+  # (mikefarah's Go tool and the jq-based Python wrapper) which disagree on
+  # whether scalars come out quoted, and a quoted id silently fails to install.
+  # The awk state machine also keeps ids under "disabled:" out of the list.
+  awk '/^[a-z]/{s=0} /^enabled:/{s=1} s && /^[[:space:]]*- id:/{print $3}' \
+    "$extensions_yml" | while read -r ext; do
+      [ -n "$ext" ] && "$editor" --install-extension "$ext" --force
+    done
 fi
 
-# Crontab
-if [ -f "$HOME/.config/vscode/crontab" ]; then
-  crontab "$HOME/.config/vscode/crontab"
-fi
+step=""
+echo
+echo "==> Bootstrap complete."
+echo "    Encrypted files (.ssh, .gitconfig, .zsh_aliases, ...) are still sealed."
+echo "    Run 'yadm decrypt' to unpack them."

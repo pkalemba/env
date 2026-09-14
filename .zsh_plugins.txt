@@ -1,3 +1,15 @@
-zsh-users/zsh-completions
-zsh-users/zsh-syntax-highlighting
-Aloxaf/fzf-tab
+# Order and annotations here are load-bearing — see the ordering notes in
+# ~/.zshrc before rearranging.
+#
+#   kind:fpath  only extends $fpath, nothing to source, and must land before
+#               compinit runs.
+#   kind:defer  sourced from the zsh-defer queue, behind the compinit that
+#               ~/.zshrc queues first.
+
+zsh-users/zsh-completions           kind:fpath
+
+# fzf-tab calls compdef at load time, so it must follow compinit.
+Aloxaf/fzf-tab                      kind:defer
+
+# Must be last: it wraps every widget defined before it.
+zsh-users/zsh-syntax-highlighting   kind:defer

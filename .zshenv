@@ -14,3 +14,7 @@ if [[ $OSTYPE == darwin* ]]; then
 else
   export LANG=C.UTF-8
 fi
+
+# The nvim config lives in ~/.config/astronvim, not ~/.config/nvim, so without
+# this nvim ignores it entirely and starts with no configuration at all.
+export NVIM_APPNAME=astronvim

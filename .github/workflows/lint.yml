@@ -1,0 +1,120 @@
+name: lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck (POSIX sh)
+        run: |
+          shellcheck -s sh .config/yadm/bootstrap
+          shellcheck -s sh '.local/bin/hidutil-remap##os.Darwin'
+
+      - name: render yadm templates and syntax-check zsh
+        run: |
+          sudo apt-get update -qq || true
+          sudo apt-get install -y -qq zsh
+          cat > /tmp/render.py <<'PY'
+          import re, sys
+          src, os_name, cls = sys.argv[1], sys.argv[2], sys.argv[3]
+          def ev(c):
+              c = c.strip()
+              m = re.match(r'yadm\.os\s*==\s*"([^"]+)"', c)
+              if m: return os_name == m.group(1)
+              m = re.match(r'yadm\.class\s*==\s*"([^"]+)"', c)
+              if m: return cls == m.group(1)
+              raise SystemExit("unhandled condition: " + c)
+          out, stack = [], []
+          for line in open(src):
+              s = line.strip()
+              m = re.fullmatch(r'\{%\s*if (.+?)\s*%\}', s)
+              if m: stack.append(ev(m.group(1))); continue
+              if re.fullmatch(r'\{%\s*else\s*%\}', s): stack[-1] = not stack[-1]; continue
+              if re.fullmatch(r'\{%\s*endif\s*%\}', s): stack.pop(); continue
+              if all(stack): out.append(line)
+          sys.stdout.write("".join(out))
+          PY
+          fail=0
+          for os_name in Darwin Linux; do
+            for cls in work home; do
+              python3 /tmp/render.py '.zshrc##template' "$os_name" "$cls" > "/tmp/zshrc.$os_name.$cls"
+              zsh -n "/tmp/zshrc.$os_name.$cls" \
+                && echo "ok: .zshrc $os_name/$cls" \
+                || { echo "FAIL: .zshrc $os_name/$cls"; fail=1; }
+              python3 /tmp/render.py '.Brewfile##template' "$os_name" "$cls" > /dev/null \
+                || { echo "FAIL: Brewfile $os_name/$cls"; fail=1; }
+            done
+          done
+          zsh -n .zshenv && echo "ok: .zshenv"
+          zsh -n .config/zsh/functions.zsh && echo "ok: functions.zsh"
+          exit $fail
+
+  tmux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq tmux
+
+      - name: parse .tmux.conf
+        # tmux reports config errors to the client, not to stderr on startup,
+        # so a detached new-session exits 0 even on a broken file. Sourcing
+        # into a live server on a dedicated socket does surface them.
+        run: |
+          tmux -L lint -f /dev/null new-session -d
+          err=$(tmux -L lint source-file "$PWD/.tmux.conf" 2>&1 | grep -v 'tpm/tpm' || true)
+          tmux -L lint kill-server 2>/dev/null || true
+          if [ -n "$err" ]; then
+            echo "tmux reported config errors:"; echo "$err"; exit 1
+          fi
+          echo "ok: .tmux.conf sources cleanly"
+
+      - name: styles keep both bg and fg
+        # Regression guard for the split bg=/fg= bug: each `set` on a *-style
+        # option replaces the whole string, so declaring them on separate lines
+        # silently drops the first. A dedicated socket keeps this independent
+        # of the step above.
+        run: |
+          tmux -L style -f "$PWD/.tmux.conf" new-session -d 2>/dev/null || true
+          tmux -L style show -g status-style  > /tmp/styles
+          tmux -L style show -g message-style >> /tmp/styles
+          tmux -L style show -gw window-status-current-style >> /tmp/styles
+          tmux -L style kill-server 2>/dev/null || true
+          cat /tmp/styles
+          for opt in status-style message-style window-status-current-style; do
+            grep -qE "^$opt .*bg=.*fg=" /tmp/styles \
+              || { echo "$opt lost a component (bg= and fg= must be one declaration)"; exit 1; }
+          done
+          echo "ok: styles intact"
+
+  data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: settings.json is valid JSON
+        run: python3 -c "import json;json.load(open('.config/vscodium/settings/profiles/main/data/settings.json'));print('ok')"
+
+      - name: commit-message types match the claudeCommitGen prompt
+        run: |
+          g=$(grep -oE '^# (feat|fix|docs|style|refactor|perf|test|build|ci|chore):' .gitmessage \
+              | sed 's/^# //;s/:$//' | sort | tr '\n' ' ')
+          v=$(grep -o 'type: [a-z|]*' .config/vscodium/settings/profiles/main/data/settings.json \
+              | sed 's/type: //' | tr '|' '\n' | sort | tr '\n' ' ')
+          echo ".gitmessage: $g"
+          echo "commitgen:   $v"
+          [ "$g" = "$v" ] || { echo "type lists have drifted apart"; exit 1; }
+
+  lua:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check .config/astronvim

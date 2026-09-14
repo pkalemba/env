@@ -1,0 +1,5 @@
+# Loaded eagerly, before anything else, and kept separate from the main bundle
+# on purpose: zsh-defer must be defined before ~/.zshrc can queue compinit onto
+# it, and that queueing has to happen before the main bundle adds its own
+# kind:defer entries (the queue is FIFO). See the ordering notes in ~/.zshrc.
+romkatv/zsh-defer
